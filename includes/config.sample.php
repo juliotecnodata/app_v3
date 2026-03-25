@@ -46,7 +46,7 @@ return [
 
   // Intervalo minimo para sincronizar progresso Moodle -> APP (por aluno/curso).
   // Evita carga excessiva no dashboard e ao abrir o curso.
-  'moodle_progress_sync_interval_seconds' => 300,
+  'moodle_progress_sync_interval_seconds' => 900,
 
   // Prefetch ao entrar: carrega matriculas/acessos do Moodle uma vez por sessao
   // e sincroniza progresso para o banco local do APP.
@@ -61,7 +61,7 @@ return [
 
   // Intervalo minimo para atualizar "ultimo acesso ao curso" no Moodle
   // durante os pings de progresso do app (evita carga excessiva).
-  'moodle_course_access_sync_interval_seconds' => 120,
+  'moodle_course_access_sync_interval_seconds' => 900,
 
   // Se 1, cada ping de progresso tenta atualizar "ultimo acesso" no Moodle.
   // Para modo local-first, mantenha 0.
@@ -70,8 +70,12 @@ return [
   // Throttle de entrada no endpoint /api/progress/update:
   // se dois pings de "in_progress" chegarem muito proximos e com pouca variacao
   // de percentual, o segundo retorna OK sem gravar no banco.
-  'progress_ingress_throttle_seconds' => 45,
-  'progress_ingress_percent_step' => 5,
+  'progress_ingress_throttle_seconds' => 120,
+  'progress_ingress_percent_step' => 10,
+
+  // Cache curto para reduzir consultas repetidas em rotas quentes.
+  'app_admin_role_cache_seconds' => 1800,
+  'course_access_block_cache_seconds' => 120,
 
   // Intervalo minimo para checagem automatica de schema no bootstrap.
   // Em producao, mantenha alto para reduzir overhead por request.

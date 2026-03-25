@@ -1103,7 +1103,7 @@
         if (progressTimer > 0) return;
         progressTimer = window.setInterval(() => {
           sendYoutubeProgress(false).catch(() => {});
-        }, 5000);
+        }, 15000);
       };
 
       const sendYoutubeProgress = async (forceComplete = false) => {
@@ -2071,7 +2071,7 @@
       if (pollTimer > 0) return;
       pollTimer = window.setInterval(() => {
         syncLessonCompletion(false);
-      }, 20000);
+      }, 60000);
     };
 
     const startShellSanitizer = () => {
