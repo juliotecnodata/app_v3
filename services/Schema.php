@@ -13,6 +13,11 @@ final class Schema {
     self::$ensured = true;
 
     try {
+      self::ensure_admin_role_table();
+      self::ensure_course_table();
+      self::ensure_course_exam_table();
+      self::ensure_node_table();
+      self::ensure_progress_table();
       self::ensure_course_policy_columns();
       self::ensure_course_display_columns();
       self::ensure_course_media_columns();
@@ -38,6 +43,120 @@ final class Schema {
 
   public static function ensure_biometric_provider_columns(): void {
     self::ensure_biometric_audit_table();
+  }
+
+  private static function ensure_admin_role_table(): void {
+    Db::exec(
+      "CREATE TABLE IF NOT EXISTS app_admin_role (
+         id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+         moodle_userid INT NOT NULL,
+         role VARCHAR(60) NOT NULL DEFAULT 'admin',
+         is_active TINYINT(1) NOT NULL DEFAULT 1,
+         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+         UNIQUE KEY uq_app_admin_role_user (moodle_userid),
+         KEY ix_app_admin_role_active (is_active, moodle_userid)
+       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+  }
+
+  private static function ensure_course_table(): void {
+    Db::exec(
+      "CREATE TABLE IF NOT EXISTS app_course (
+         id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+         moodle_courseid BIGINT UNSIGNED NULL,
+         slug VARCHAR(180) NOT NULL,
+         title VARCHAR(255) NOT NULL,
+         description MEDIUMTEXT NULL,
+         access_days INT NULL,
+         status VARCHAR(20) NOT NULL DEFAULT 'draft',
+         created_by_moodle_userid INT NULL,
+         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+         published_at DATETIME NULL,
+         UNIQUE KEY uq_app_course_slug (slug),
+         KEY ix_app_course_status (status, id),
+         KEY ix_app_course_moodle (moodle_courseid)
+       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    if (!self::has_index('app_course', 'uq_app_course_slug')) {
+      Db::exec("ALTER TABLE app_course ADD UNIQUE KEY uq_app_course_slug (slug)");
+    }
+    if (!self::has_index('app_course', 'ix_app_course_status')) {
+      Db::exec("ALTER TABLE app_course ADD INDEX ix_app_course_status (status, id)");
+    }
+    if (!self::has_index('app_course', 'ix_app_course_moodle')) {
+      Db::exec("ALTER TABLE app_course ADD INDEX ix_app_course_moodle (moodle_courseid)");
+    }
+  }
+
+  private static function ensure_course_exam_table(): void {
+    Db::exec(
+      "CREATE TABLE IF NOT EXISTS app_course_exam (
+         id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+         course_id BIGINT UNSIGNED NOT NULL,
+         quiz_cmid BIGINT UNSIGNED NOT NULL,
+         min_grade DECIMAL(10,2) NULL,
+         exam_title VARCHAR(255) NULL,
+         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+         UNIQUE KEY uq_app_course_exam_course (course_id),
+         KEY ix_app_course_exam_quiz (quiz_cmid)
+       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+  }
+
+  private static function ensure_node_table(): void {
+    Db::exec(
+      "CREATE TABLE IF NOT EXISTS app_node (
+         id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+         course_id BIGINT UNSIGNED NOT NULL,
+         parent_id BIGINT UNSIGNED NULL,
+         kind VARCHAR(30) NOT NULL,
+         subtype VARCHAR(50) NULL,
+         title VARCHAR(255) NOT NULL,
+         sort INT NOT NULL DEFAULT 0,
+         depth INT NOT NULL DEFAULT 0,
+         path VARCHAR(2048) NOT NULL DEFAULT '/',
+         content_json MEDIUMTEXT NULL,
+         rules_json MEDIUMTEXT NULL,
+         is_published TINYINT(1) NOT NULL DEFAULT 1,
+         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+         KEY ix_app_node_course_parent_sort (course_id, parent_id, sort, id),
+         KEY ix_app_node_course_kind (course_id, kind, subtype, is_published)
+       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    if (!self::has_index('app_node', 'ix_app_node_course_parent_sort')) {
+      Db::exec("ALTER TABLE app_node ADD INDEX ix_app_node_course_parent_sort (course_id, parent_id, sort, id)");
+    }
+    if (!self::has_index('app_node', 'ix_app_node_course_kind')) {
+      Db::exec("ALTER TABLE app_node ADD INDEX ix_app_node_course_kind (course_id, kind, subtype, is_published)");
+    }
+  }
+
+  private static function ensure_progress_table(): void {
+    Db::exec(
+      "CREATE TABLE IF NOT EXISTS app_progress (
+         id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+         moodle_userid INT NOT NULL,
+         course_id BIGINT UNSIGNED NOT NULL,
+         node_id BIGINT UNSIGNED NOT NULL,
+         status VARCHAR(20) NOT NULL DEFAULT 'pending',
+         percent INT NOT NULL DEFAULT 0,
+         seconds_spent INT NOT NULL DEFAULT 0,
+         last_position INT NOT NULL DEFAULT 0,
+         last_seen_at DATETIME NULL,
+         completed_at DATETIME NULL,
+         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+         UNIQUE KEY uq_app_progress_user_course_node (moodle_userid, course_id, node_id),
+         KEY ix_app_progress_course_node (course_id, node_id),
+         KEY ix_app_progress_user_status (moodle_userid, status, course_id)
+       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
   }
 
   private static function ensure_settings_table(): void {
