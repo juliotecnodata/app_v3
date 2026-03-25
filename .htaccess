@@ -1,0 +1,11 @@
+RewriteEngine On
+
+RewriteRule ^index\.php$ - [L]
+RewriteRule ^admin/inscritos/?$ admin/inscritos/index.php [L,QSA]
+RewriteRule ^admin/enrollments/?$ admin/enrollments/index.php [L,QSA]
+RewriteRule ^admin/course-mapping/?$ admin/course_mapping/index.php [L,QSA]
+RewriteRule ^admin/course_mapping/?$ admin/course_mapping/index.php [L,QSA]
+RewriteRule ^admin/mapeamento-cursos/?$ admin/course_mapping/index.php [L,QSA]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . index.php [L]

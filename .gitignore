@@ -1,0 +1,8 @@
+includes/config.php
+
+storage/cache/
+storage/logs/
+storage/progress_debug.log
+
+.DS_Store
+Thumbs.db
