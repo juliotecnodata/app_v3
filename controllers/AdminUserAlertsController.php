@@ -8,13 +8,11 @@ use App\Auth;
 use App\Csrf;
 use App\Db;
 use App\Response;
-use App\Schema;
 use App\UserAlertService;
 
 final class AdminUserAlertsController {
   public static function index(): void {
     Auth::require_app_admin();
-    Schema::ensure();
 
     if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
       self::handle_post();

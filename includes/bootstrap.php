@@ -150,18 +150,41 @@ require_once APP_DIR . '/controllers/ApiController.php';
 try {
   $schemaEnsureInterval = max(0, (int)($appConfig['schema_ensure_interval_seconds'] ?? 21600));
   $schemaStampFile = $cacheDir . '/schema_ensure.timestamp';
+  $schemaVersion = (string)@filemtime(APP_DIR . '/services/Schema.php');
   $shouldEnsureSchema = true;
 
   if ($schemaEnsureInterval > 0 && is_file($schemaStampFile)) {
-    $lastEnsure = (int)@file_get_contents($schemaStampFile);
-    if ($lastEnsure > 0 && (time() - $lastEnsure) < $schemaEnsureInterval) {
+    $rawStamp = trim((string)@file_get_contents($schemaStampFile));
+    $lastEnsure = 0;
+    $lastVersion = '';
+
+    if ($rawStamp !== '') {
+      $decodedStamp = json_decode($rawStamp, true);
+      if (is_array($decodedStamp)) {
+        $lastEnsure = (int)($decodedStamp['ts'] ?? 0);
+        $lastVersion = trim((string)($decodedStamp['schema_version'] ?? ''));
+      } else {
+        $lastEnsure = (int)$rawStamp;
+      }
+    }
+
+    if (
+      $lastEnsure > 0
+      && (time() - $lastEnsure) < $schemaEnsureInterval
+      && $lastVersion === $schemaVersion
+    ) {
       $shouldEnsureSchema = false;
     }
   }
 
   if ($shouldEnsureSchema) {
     \App\Schema::ensure();
-    @file_put_contents($schemaStampFile, (string)time(), LOCK_EX);
+    @file_put_contents($schemaStampFile, json_encode([
+      'ts' => time(),
+      'schema_version' => $schemaVersion,
+    ]), LOCK_EX);
+  } else {
+    \App\Schema::assume_current();
   }
 } catch (\Throwable $e) {
   error_log('[app_v3] Falha ao validar schema do APP: ' . $e->getMessage());

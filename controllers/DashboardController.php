@@ -9,7 +9,6 @@ use App\CoursePolicyService;
 use App\Db;
 use App\Moodle;
 use App\Response;
-use App\Schema;
 use App\Tree;
 use App\UserCourseBlockService;
 
@@ -19,7 +18,6 @@ final class DashboardController {
     global $CFG;
 
     Auth::require_login();
-    Schema::ensure();
     $u = Auth::user();
     $isAdmin = Auth::is_app_admin((int)$u->id);
 

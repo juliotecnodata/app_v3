@@ -933,11 +933,12 @@ $trailHtml = ob_get_clean();
             <?php
               $path = (string)($contentJson['file_path'] ?? ($contentJson['url'] ?? ''));
               $pdfUrl = $assetUrl($path);
-              $pdfPages = (int)($contentJson['pages'] ?? $contentJson['page_count'] ?? 0);
-              $pdfNameRaw = trim((string)($contentJson['label'] ?? $contentJson['title'] ?? ''));
-              if ($pdfNameRaw === '') {
-                $pdfPathForName = (string)parse_url($pdfUrl ?: $path, PHP_URL_PATH);
-                $pdfNameRaw = $pdfPathForName !== '' ? basename($pdfPathForName) : 'material.pdf';
+              $pdfTitle = trim((string)($selected['title'] ?? ''));
+              if ($pdfTitle === '') {
+                $pdfTitle = trim((string)($contentJson['label'] ?? $contentJson['title'] ?? ''));
+              }
+              if ($pdfTitle === '') {
+                $pdfTitle = 'Material em PDF';
               }
             ?>
             <?php if ($pdfUrl === ''): ?>
@@ -948,14 +949,7 @@ $trailHtml = ob_get_clean();
                   <i class="fa-solid fa-file-pdf"></i>
                 </div>
                 <div class="study-pdf-card__body">
-                  <h3 class="study-pdf-card__title"><?= h($pdfNameRaw) ?></h3>
-                  <p class="study-pdf-card__subtitle mb-0">
-                    Material em PDF para download.
-                    <?php if ($pdfPages > 0): ?>
-                      <?= 'Este arquivo possui ' . (int)$pdfPages . ' paginas.' ?>
-                    <?php endif; ?>
-                    A visualizacao inline foi desativada para manter o sistema rapido.
-                  </p>
+                  <h3 class="study-pdf-card__title"><?= h($pdfTitle) ?></h3>
                 </div>
                 <div class="study-pdf-card__actions">
                   <a class="btn study-pdf-btn study-pdf-btn--primary js-study-pdf-touch" href="<?= h($pdfUrl) ?>" download data-course="<?= (int)$courseId ?>" data-node="<?= (int)($selected['id'] ?? 0) ?>">
@@ -966,10 +960,6 @@ $trailHtml = ob_get_clean();
                   </a>
                 </div>
               </section>
-              <div class="study-pdf-note">
-                <i class="fa-solid fa-circle-info me-1"></i>
-                O PDF nao e carregado dentro da aula para evitar lentidao em arquivos grandes.
-              </div>
             <?php endif; ?>
 
           <?php elseif ($kind === 'content' && $subtype === 'download'): ?>

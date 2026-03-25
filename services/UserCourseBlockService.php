@@ -4,6 +4,8 @@ declare(strict_types=1);
 namespace App;
 
 final class UserCourseBlockService {
+  private static array $activeCache = [];
+
   public static function default_title(): string {
     return 'Acesso bloqueado';
   }
@@ -13,8 +15,6 @@ final class UserCourseBlockService {
   }
 
   public static function get(int $courseId, int $moodleUserId): ?array {
-    Schema::ensure();
-
     if ($courseId <= 0 || $moodleUserId <= 0) {
       return null;
     }
@@ -35,10 +35,26 @@ final class UserCourseBlockService {
   }
 
   public static function active_for_user(int $courseId, int $moodleUserId): ?array {
-    Schema::ensure();
-
     if ($courseId <= 0 || $moodleUserId <= 0) {
       return null;
+    }
+
+    $cacheKey = self::key($courseId, $moodleUserId);
+    if (array_key_exists($cacheKey, self::$activeCache)) {
+      return self::$activeCache[$cacheKey];
+    }
+
+    global $SESSION;
+    $cacheTtl = max(10, (int)App::cfg('course_access_block_cache_seconds', 20));
+    $sessionCache = $SESSION->app_v3_course_block_cache ?? null;
+    if (is_array($sessionCache)) {
+      $entry = $sessionCache[$cacheKey] ?? null;
+      $cachedAt = (int)($entry['ts'] ?? 0);
+      if ($cachedAt > 0 && (time() - $cachedAt) < $cacheTtl) {
+        $row = (isset($entry['row']) && is_array($entry['row'])) ? $entry['row'] : null;
+        self::$activeCache[$cacheKey] = $row;
+        return $row;
+      }
     }
 
     $row = Db::one(
@@ -55,12 +71,22 @@ final class UserCourseBlockService {
       ]
     );
 
-    return $row ?: null;
+    $normalized = $row ?: null;
+    self::$activeCache[$cacheKey] = $normalized;
+
+    if (!is_array($sessionCache)) {
+      $sessionCache = [];
+    }
+    $sessionCache[$cacheKey] = [
+      'ts' => time(),
+      'row' => $normalized,
+    ];
+    $SESSION->app_v3_course_block_cache = $sessionCache;
+
+    return $normalized;
   }
 
   public static function active_map_for_user_courses(int $moodleUserId, array $courseIds): array {
-    Schema::ensure();
-
     $courseIds = self::normalize_positive_ids($courseIds);
     if ($moodleUserId <= 0 || empty($courseIds)) {
       return [];
@@ -88,8 +114,6 @@ final class UserCourseBlockService {
   }
 
   public static function active_map_for_course_users(int $courseId, array $userIds): array {
-    Schema::ensure();
-
     $userIds = self::normalize_positive_ids($userIds);
     if ($courseId <= 0 || empty($userIds)) {
       return [];
@@ -117,8 +141,6 @@ final class UserCourseBlockService {
   }
 
   public static function active_lookup(array $pairs): array {
-    Schema::ensure();
-
     $clauses = [];
     $params = [];
     $seen = [];
@@ -165,8 +187,6 @@ final class UserCourseBlockService {
   }
 
   public static function block(int $courseId, int $moodleUserId, array $input, int $adminUserId): array {
-    Schema::ensure();
-
     if ($courseId <= 0 || $moodleUserId <= 0) {
       throw new \InvalidArgumentException('Curso ou usuario invalido para bloqueio.');
     }
@@ -223,12 +243,11 @@ final class UserCourseBlockService {
       ]
     );
 
+    self::forget_cached_entry($courseId, $moodleUserId);
     return self::active_for_user($courseId, $moodleUserId) ?? self::get($courseId, $moodleUserId) ?? [];
   }
 
   public static function unblock(int $courseId, int $moodleUserId, int $adminUserId): void {
-    Schema::ensure();
-
     if ($courseId <= 0 || $moodleUserId <= 0) {
       throw new \InvalidArgumentException('Curso ou usuario invalido para desbloqueio.');
     }
@@ -246,6 +265,8 @@ final class UserCourseBlockService {
         'unblocked_by' => $adminUserId > 0 ? $adminUserId : null,
       ]
     );
+
+    self::forget_cached_entry($courseId, $moodleUserId);
   }
 
   public static function title_for_row(?array $row): string {
@@ -342,5 +363,17 @@ final class UserCourseBlockService {
     }
 
     return [implode(', ', $placeholders), $params];
+  }
+
+  private static function forget_cached_entry(int $courseId, int $moodleUserId): void {
+    $cacheKey = self::key($courseId, $moodleUserId);
+    unset(self::$activeCache[$cacheKey]);
+
+    global $SESSION;
+    if (!isset($SESSION->app_v3_course_block_cache) || !is_array($SESSION->app_v3_course_block_cache)) {
+      return;
+    }
+
+    unset($SESSION->app_v3_course_block_cache[$cacheKey]);
   }
 }

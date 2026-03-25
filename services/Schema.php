@@ -12,19 +12,28 @@ final class Schema {
     }
     self::$ensured = true;
 
-    self::ensure_course_policy_columns();
-    self::ensure_course_display_columns();
-    self::ensure_course_media_columns();
-    self::ensure_settings_table();
-    self::ensure_course_user_block_table();
-    self::ensure_user_alert_table();
-    self::ensure_course_runtime_table();
-    self::ensure_support_material_table();
-    self::ensure_biometric_audit_table();
-    self::ensure_course_user_access_table();
-    self::ensure_node_moodle_mapping_columns();
-    self::ensure_node_progress_columns();
-    self::ensure_progress_indexes();
+    try {
+      self::ensure_course_policy_columns();
+      self::ensure_course_display_columns();
+      self::ensure_course_media_columns();
+      self::ensure_settings_table();
+      self::ensure_course_user_block_table();
+      self::ensure_user_alert_table();
+      self::ensure_course_runtime_table();
+      self::ensure_support_material_table();
+      self::ensure_biometric_audit_table();
+      self::ensure_course_user_access_table();
+      self::ensure_node_moodle_mapping_columns();
+      self::ensure_node_progress_columns();
+      self::ensure_progress_indexes();
+    } catch (\Throwable $exception) {
+      self::$ensured = false;
+      throw $exception;
+    }
+  }
+
+  public static function assume_current(): void {
+    self::$ensured = true;
   }
 
   public static function ensure_biometric_provider_columns(): void {

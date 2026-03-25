@@ -49,7 +49,9 @@ final class Db {
     }
 
     $lastException = null;
+    $attemptsMade = 0;
     for ($attempt = 1; $attempt <= $connectRetries; $attempt++) {
+      $attemptsMade = $attempt;
       try {
         self::$pdo = new PDO($dsn, $user, $pass, $opts);
         self::applySessionSettings(self::$pdo, $cfg);
@@ -73,10 +75,14 @@ final class Db {
       '[app_v3][db_init] connect_failed'
       . ' dsn=' . self::mask_dsn($dsn)
       . ' user=' . ($user !== '' ? $user : '(empty)')
-      . ' attempts=' . $connectRetries
+      . ' attempts=' . $attemptsMade
       . ($errorCode !== '' ? ' code=' . $errorCode : '')
       . ($errorMessage !== '' ? ' message=' . $errorMessage : '')
     );
+
+    if ($errorCode === '1226') {
+      throw new \RuntimeException('Limite de conexoes do banco do APP excedido. Ajuste o recurso max_connections_per_hour no MySQL do APP.', 0, $lastException);
+    }
 
     throw new \RuntimeException('Falha ao conectar no banco do APP. Verifique app_v3/includes/config.php.', 0, $lastException);
   }

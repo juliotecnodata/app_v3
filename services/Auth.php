@@ -4,6 +4,8 @@ declare(strict_types=1);
 namespace App;
 
 final class Auth {
+  private static array $appAdminCache = [];
+
   public static function require_login(): void {
     \require_login();
     global $USER;
@@ -29,14 +31,45 @@ final class Auth {
   }
 
   public static function is_app_admin(int $moodleUserid): bool {
+    if ($moodleUserid <= 0) {
+      return false;
+    }
     if (\is_siteadmin($moodleUserid)) return true;
+    if (array_key_exists($moodleUserid, self::$appAdminCache)) {
+      return self::$appAdminCache[$moodleUserid];
+    }
+
+    global $SESSION;
+    $cacheTtl = max(60, (int)App::cfg('app_admin_role_cache_seconds', 300));
+    $sessionCache = $SESSION->app_v3_app_admin_cache ?? null;
+    if (is_array($sessionCache)) {
+      $entry = $sessionCache[$moodleUserid] ?? null;
+      $cachedAt = (int)($entry['ts'] ?? 0);
+      if ($cachedAt > 0 && (time() - $cachedAt) < $cacheTtl) {
+        $value = (int)($entry['value'] ?? 0) === 1;
+        self::$appAdminCache[$moodleUserid] = $value;
+        return $value;
+      }
+    }
 
     $row = Db::one(
       "SELECT role FROM app_admin_role WHERE moodle_userid = :uid AND is_active = 1 LIMIT 1",
       ['uid' => $moodleUserid]
     );
 
-    return $row !== null;
+    $isAdmin = $row !== null;
+    self::$appAdminCache[$moodleUserid] = $isAdmin;
+
+    if (!is_array($sessionCache)) {
+      $sessionCache = [];
+    }
+    $sessionCache[$moodleUserid] = [
+      'ts' => time(),
+      'value' => $isAdmin ? 1 : 0,
+    ];
+    $SESSION->app_v3_app_admin_cache = $sessionCache;
+
+    return $isAdmin;
   }
 
   public static function require_app_admin(): void {

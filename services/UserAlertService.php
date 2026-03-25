@@ -18,8 +18,6 @@ final class UserAlertService {
   }
 
   public static function get(int $alertId): ?array {
-    Schema::ensure();
-
     $row = Db::one(
       "SELECT *
          FROM app_user_alert
@@ -32,7 +30,6 @@ final class UserAlertService {
   }
 
   public static function create(array $input, int $createdByUserId): int {
-    Schema::ensure();
     $payload = self::prepare_payload($input);
 
     Db::exec(
@@ -82,7 +79,6 @@ final class UserAlertService {
   }
 
   public static function update(int $alertId, array $input): void {
-    Schema::ensure();
     $payload = self::prepare_payload($input);
 
     Db::exec(
@@ -115,8 +111,6 @@ final class UserAlertService {
   }
 
   public static function dismiss(int $alertId, int $closedByUserId): void {
-    Schema::ensure();
-
     Db::exec(
       "UPDATE app_user_alert
           SET status = 'closed',
@@ -131,8 +125,6 @@ final class UserAlertService {
   }
 
   public static function delete(int $alertId): void {
-    Schema::ensure();
-
     Db::exec(
       "DELETE FROM app_user_alert
         WHERE id = :id",
@@ -142,8 +134,6 @@ final class UserAlertService {
 
   public static function list_recent(?int $courseId = null, int $limit = 80): array {
     global $DB;
-
-    Schema::ensure();
 
     $sql = "SELECT a.*,
                    c.title AS course_title
@@ -241,8 +231,6 @@ final class UserAlertService {
   }
 
   public static function current_for_user(int $moodleUserId, string $page, int $courseId = 0): ?array {
-    Schema::ensure();
-
     $page = self::normalize_scope($page);
 
     $row = Db::one(
@@ -290,8 +278,6 @@ final class UserAlertService {
   }
 
   public static function acknowledge(int $alertId, int $moodleUserId, string $page): void {
-    Schema::ensure();
-
     Db::exec(
       "UPDATE app_user_alert
           SET acknowledged_at = NOW(),

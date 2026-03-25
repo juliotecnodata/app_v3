@@ -8,13 +8,11 @@ use App\Auth;
 use App\Csrf;
 use App\Db;
 use App\Response;
-use App\Schema;
 
 final class AdminSupportMaterialsController {
 
   public static function index(): void {
     Auth::require_app_admin();
-    Schema::ensure();
 
     $selectedCourseId = isset($_GET['course_id']) ? (int)$_GET['course_id'] : 0;
     $editId = isset($_GET['edit']) ? (int)$_GET['edit'] : 0;
